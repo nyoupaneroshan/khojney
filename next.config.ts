@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // ✅ Disable ESLint during production builds (on Vercel)
   eslint: {
-    ignoreDuringBuilds: true, // ✅ This will allow Vercel build to proceed despite ESLint issues
+    ignoreDuringBuilds: true,
   },
 
+  // Your existing Webpack fallbacks
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
