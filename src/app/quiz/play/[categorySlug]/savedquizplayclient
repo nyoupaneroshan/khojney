@@ -1,0 +1,212 @@
+// src/app/quiz/play/[categorySlug]/quiz-play-client.tsx
+
+'use client';
+
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import { User } from '@supabase/supabase-js';
+import { ClockIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Category, Question, Option } from './types';
+
+// --- UI HELPER COMPONENTS (No changes here) ---
+const QuizProgressBar = ({ current, total }: { current: number; total: number }) => {
+  const progressPercentage = total > 0 ? (current / total) * 100 : 0;
+  return (
+    <div className="w-full bg-gray-700 rounded-full h-2.5 mb-4">
+      <div className="bg-cyan-500 h-2.5 rounded-full transition-all" style={{ width: `${progressPercentage}%` }} />
+    </div>
+  );
+};
+
+const OptionButton = ({ option, state, onClick }: { option: Option, state: 'default' | 'correct' | 'incorrect', onClick: () => void }) => {
+  const baseClasses = 'w-full text-left p-4 rounded-lg border-2 transition-all duration-200 flex items-center gap-4 text-lg';
+  const stateClasses = {
+    default: 'bg-gray-800 border-gray-700 hover:border-cyan-600 hover:bg-gray-700/50',
+    correct: 'bg-green-900/60 border-green-500 text-white font-bold',
+    incorrect: 'bg-red-900/60 border-red-500 text-white font-bold',
+  };
+  const Icon = { correct: <CheckIcon className="h-6 w-6 text-white" />, incorrect: <XMarkIcon className="h-6 w-6 text-white" />, default: null };
+  return (
+    <li><button onClick={onClick} disabled={state !== 'default'} className={`${baseClasses} ${stateClasses[state]}`}><div className="w-6">{Icon[state]}</div><span>{option.option_text_en}</span></button></li>
+  );
+};
+
+
+// --- SHUFFLE UTILITY FUNCTION (No changes here) ---
+const shuffleArray = (array: any[]) => {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+  return array;
+};
+
+// --- MAIN QUIZ CLIENT COMPONENT ---
+const TIME_PER_QUESTION = 15;
+
+export default function QuizPlayClient({ category, initialQuestions, user }: { category: Category, initialQuestions: Question[], user: User }) {
+  const router = useRouter();
+
+  // Re-introducing isSubmitting state for better UX
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [quizAttemptId, setQuizAttemptId] = useState<string | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<Map<string, string>>(new Map());
+  const [startTime, setStartTime] = useState(0);
+  const [answerStatus, setAnswerStatus] = useState<'unanswered' | 'answered'>('unanswered');
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(TIME_PER_QUESTION);
+
+  const shuffledQuestions = useMemo(() => shuffleArray([...initialQuestions]), [initialQuestions]);
+  const currentQuestion = useMemo(() => shuffledQuestions[currentQuestionIndex], [shuffledQuestions, currentQuestionIndex]);
+  const shuffledOptions = useMemo(() => currentQuestion ? shuffleArray([...currentQuestion.options]) : [], [currentQuestion]);
+
+  useEffect(() => {
+    const createAttempt = async () => {
+      const { data: attemptData, error: attemptError } = await supabase.from('quiz_attempts').insert({ user_id: user.id, category_id: category.id }).select('id').single();
+      if (attemptError) console.error("Failed to create quiz attempt:", attemptError);
+      else { setQuizAttemptId(attemptData.id); setStartTime(Date.now()); }
+    };
+    createAttempt();
+  }, [category.id, user.id]);
+
+  useEffect(() => {
+    if (answerStatus === 'answered' || !quizAttemptId) return;
+    if (timeLeft === 0) { handleNextQuestion(); return; }
+    const timerInterval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+    return () => clearInterval(timerInterval);
+  }, [timeLeft, answerStatus, quizAttemptId]);
+
+
+  // --- THE FIX: Wrap handleFinishQuiz in useCallback ---
+  const handleFinishQuiz = useCallback(async () => {
+    if (!quizAttemptId || isSubmitting) return;
+    setIsSubmitting(true);
+
+    let score = 0;
+    shuffledQuestions.forEach(q => {
+      const correctOption = q.options.find(o => o.is_correct);
+      const userAnswer = userAnswers.get(q.id);
+      if (correctOption && userAnswer === correctOption.id) {
+        score++;
+      }
+    });
+
+    const timeTakenInSeconds = Math.round((Date.now() - startTime) / 1000);
+    const answersToSave = Array.from(userAnswers.entries()).map(([question_id, selected_option_id]) => ({ quiz_attempt_id: quizAttemptId, question_id, selected_option_id }));
+
+    // The database operations are wrapped in a try...finally block
+    try {
+        await supabase.from('user_answers').insert(answersToSave);
+        await supabase.from('quiz_attempts').update({ score, status: 'completed', completed_at: new Date().toISOString(), time_taken_seconds: timeTakenInSeconds }).eq('id', quizAttemptId);
+        router.push(`/quiz/results/${quizAttemptId}`);
+    } catch (error) {
+        console.error("Error finishing quiz:", error);
+        // Optionally, set an error state to show the user
+    }
+  }, [quizAttemptId, isSubmitting, shuffledQuestions, userAnswers, startTime, router]);
+
+
+  const handleNextQuestion = useCallback(() => {
+    if (currentQuestionIndex < shuffledQuestions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setAnswerStatus('unanswered');
+      setSelectedOptionId(null);
+      setTimeLeft(TIME_PER_QUESTION);
+    } else {
+      // This will now call the stable, correct version of handleFinishQuiz
+      handleFinishQuiz();
+    }
+  }, [currentQuestionIndex, shuffledQuestions.length, handleFinishQuiz]);
+
+  const handleOptionSelect = useCallback((option: Option) => {
+    if (answerStatus === 'answered' || !currentQuestion) return;
+    setAnswerStatus('answered');
+    setSelectedOptionId(option.id);
+    const newAnswers = new Map(userAnswers);
+    newAnswers.set(currentQuestion.id, option.id);
+    setUserAnswers(newAnswers);
+  }, [answerStatus, currentQuestion, userAnswers]);
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (answerStatus === 'answered') {
+      if (event.key === 'Enter') handleNextQuestion();
+      return;
+    }
+    const key = parseInt(event.key);
+    if (key >= 1 && key <= shuffledOptions.length) {
+      handleOptionSelect(shuffledOptions[key - 1]);
+    }
+  }, [answerStatus, shuffledOptions, handleOptionSelect, handleNextQuestion]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+
+  if (!quizAttemptId || !currentQuestion) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-900 text-white">
+        <p>Preparing your quiz...</p>
+      </main>
+    );
+  }
+
+  const correctOptionId = currentQuestion.options.find(o => o.is_correct)!.id;
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-gray-900 text-white overflow-hidden">
+      <div className="w-full max-w-3xl">
+        <div className="mb-4">
+          <p className="text-lg font-semibold text-cyan-400">{category.name_en}</p>
+          <QuizProgressBar current={currentQuestionIndex} total={shuffledQuestions.length} />
+          <div className="flex justify-between items-center text-sm text-gray-400">
+            <span>Question {currentQuestionIndex + 1} of {shuffledQuestions.length}</span>
+            <div className="flex items-center gap-2 bg-gray-700/50 px-3 py-1 rounded-full text-lg font-mono"><ClockIcon className="h-5 w-5 text-cyan-400" /><span>{timeLeft}s</span></div>
+          </div>
+        </div>
+        
+        <AnimatePresence mode="wait">
+          <motion.div key={currentQuestion.id} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }} className="bg-gray-800/60 p-6 sm:p-8 rounded-xl shadow-2xl border border-gray-700/60">
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-8 text-gray-100 min-h-[96px]">{currentQuestion.question_text_en}</h2>
+            <ul className="space-y-4 mb-8">
+              {shuffledOptions.map((option, index) => {
+                let state: 'default' | 'correct' | 'incorrect' = 'default';
+                if (answerStatus === 'answered') {
+                  if (option.id === correctOptionId) state = 'correct';
+                  else if (option.id === selectedOptionId) state = 'incorrect';
+                }
+                return (
+                  <div key={option.id} className="flex items-center gap-4">
+                    <span className="text-cyan-400 font-bold text-xl">{index + 1}.</span>
+                    <div className="flex-grow"><OptionButton option={option} state={state} onClick={() => handleOptionSelect(option)} /></div>
+                  </div>
+                );
+              })}
+            </ul>
+            <div className="text-right mt-8 pt-4 border-t border-gray-700/50 h-14">
+              {answerStatus === 'answered' && (
+                <motion.button 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  onClick={handleNextQuestion} 
+                  disabled={isSubmitting} // Disable button while submitting
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-8 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting 
+                    ? 'Saving...' 
+                    : (currentQuestionIndex < shuffledQuestions.length - 1 ? 'Next Question' : 'Finish Quiz')}
+                </motion.button>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </main>
+  );
+}
