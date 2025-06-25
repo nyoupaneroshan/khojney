@@ -108,5 +108,5 @@ module.exports = {
   },
   // IMPORTANT: The 'plugins' property for Tailwind CSS should be an ARRAY, not an object.
   // If you have Tailwind CSS plugins (like @tailwindcss/forms), they go here:
-  plugins: [require("tailwindcss-animate")], // <--- This must be an empty array if you have no Tailwind plugins, or an array of plugins
+  plugins: [require("tailwindcss-animate", "@tailwindcss/typography")], // <--- This must be an empty array if you have no Tailwind plugins, or an array of plugins
 };

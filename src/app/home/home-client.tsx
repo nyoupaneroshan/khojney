@@ -9,7 +9,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, LogOut, Search, Menu, X, BrainCircuit, ChevronRight, UserCircle, Star, SortAsc, Users } from 'lucide-react';
 import Auth from '@/components/Auth';
-import { Category, HierarchicalCategory } from './types';
+import { Category, HierarchicalCategory } from '../types';
 import { useAuth } from '@/components/AuthContext';
 
 // --- Debounce Hook (Logic Unchanged) ---

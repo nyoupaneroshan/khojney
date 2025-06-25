@@ -1,38 +1,39 @@
+// src/components/layout/Navbar.tsx
+
 'use client';
 
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Trophy, LogIn, UserCircle2, BrainCircuit, Settings, LogOut, ChevronDown, ChevronUp, LayoutDashboard, Menu, X } from 'lucide-react'; // Added Menu, X
-import { ThemeToggle } from './ThemeToggle';
-import { useState, useRef, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@/components/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { motion, AnimatePresence } from 'framer-motion'; // For mobile menu animations
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    BrainCircuit, Home, LayoutGrid, Trophy, LogIn, Settings, LogOut, 
+    LayoutDashboard, Menu, X, ChevronDown, 
+    ArrowRight // <-- THIS IS THE FIX: Added the missing icon
+} from 'lucide-react';
 
-export const Navbar = () => {
+interface NavbarProps {
+  onLoginClick?: () => void;
+  onRegisterClick?: () => void;
+}
+
+export const Navbar = ({ onLoginClick, onRegisterClick }: NavbarProps) => {
   const pathname = usePathname();
-  const { session, loadingAuth } = useAuth();
-
+  const { session } = useAuth();
   const isAuthenticated = !!session;
+  const isHomepage = pathname === '/';
 
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false); // For desktop profile dropdown
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);     // For mobile hamburger menu
-  const profileDropdownRef = useRef<HTMLDivElement>(null); // Ref for desktop profile dropdown click-outside
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Condition to hide nav links: Not authenticated AND on the homepage AND auth state has finished loading.
-  const shouldHideNavLinks = !isAuthenticated && pathname === '/' && !loadingAuth;
-
-  const navLinks = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Categories', href: '/categories', icon: LayoutGrid },
-    { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
-  ];
-
-  // Close desktop dropdown when clicking outside
+  // Close dropdown if clicked outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
-        setShowProfileDropdown(false);
+        setProfileDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -42,183 +43,103 @@ export const Navbar = () => {
   }, [profileDropdownRef]);
 
   const handleLogout = async () => {
-    setShowProfileDropdown(false); // Close desktop dropdown
-    setIsMobileMenuOpen(false);    // Close mobile menu
     await supabase.auth.signOut();
+    setProfileDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    // You might want to redirect here as well, e.g., router.push('/')
   };
-
-  if (loadingAuth) {
-    return (
-      <nav className="sticky top-0 z-50 bg-gray-900 bg-opacity-90 backdrop-blur-md border-b border-gray-800 py-4 px-6 shadow-xl">
-        <div className="mx-auto max-w-7xl flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2 text-2xl font-extrabold text-white">
-            <BrainCircuit size={30} className="text-cyan-400" /> Khojney App
-          </Link>
-          <div className="text-gray-400 text-sm">Loading user...</div>
-        </div>
-      </nav>
-    );
-  }
 
   const userAvatarUrl = session?.user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${session?.user?.id || 'default'}&colorful=true`;
 
-  return (
-    <>
-      <nav className="sticky top-0 z-50 bg-gray-900 bg-opacity-90 backdrop-blur-md border-b border-gray-800 py-4 px-6 shadow-xl">
-        <div className="mx-auto max-w-7xl flex justify-between items-center">
-          {/* Logo / App Name */}
-          <Link href="/" className="flex items-center gap-2 text-2xl font-extrabold text-white hover:text-cyan-400 transition-colors">
-            <BrainCircuit size={30} className="text-cyan-400" />
-            Khojney App
-          </Link>
+  const marketingLinks = [
+    { name: 'Features', href: '#features' },
+    { name: '✨ AI Planner', href: '#ai-planner' },
+    { name: 'FAQ', href: '#faq' },
+  ];
+  const appLinks = [
+    { name: 'Home', href: '/home', icon: Home },
+    { name: 'Categories', href: '/categories', icon: LayoutGrid },
+    { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
+  ];
 
-          {/* Desktop Navigation Links */}
-          {!shouldHideNavLinks && (
-            <div className="hidden md:flex items-center space-x-6">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-lg font-medium transition-colors
-                    ${pathname === link.href ? 'bg-gray-700 text-cyan-400' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
-                  }
-                >
-                  <link.icon size={20} />
+  // --- RENDER HOMEPAGE NAVBAR ---
+  if (isHomepage) {
+    return (
+      <header className="bg-slate-900/60 backdrop-blur-lg fixed top-0 left-0 right-0 z-50 border-b border-slate-700/60">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 text-xl font-extrabold text-white hover:text-cyan-400 transition-colors">
+              <BrainCircuit size={28} className="text-cyan-400" />Khojney
+            </Link>
+            <nav className="hidden md:flex items-center space-x-6">
+              {marketingLinks.map((link) => (
+                <a key={link.name} href={link.href} className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors text-gray-300 hover:bg-slate-800 hover:text-white">
                   {link.name}
-                </Link>
+                </a>
               ))}
-            </div>
-          )}
-
-          {/* Right side: Theme Toggle & Auth/User Section */}
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-
-            {/* Desktop Auth/Profile Section */}
-            {isAuthenticated ? (
-              <div className="relative hidden md:block" ref={profileDropdownRef}> {/* Hidden on mobile */}
-                <button
-                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center gap-2 p-2 rounded-full text-gray-300 hover:bg-gray-800 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  aria-label="User menu"
-                  aria-expanded={showProfileDropdown}
-                >
-                  <img src={userAvatarUrl} alt="User Avatar" className="w-8 h-8 rounded-full border border-gray-600" />
-                  <span className="hidden lg:inline-block text-sm font-medium">
-                    {session?.user?.email?.split('@')[0] || 'User'}
-                  </span>
-                  {showProfileDropdown ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </button>
-
-                {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-2 z-50">
-                    <Link href="/dashboard" onClick={() => setShowProfileDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
-                      <LayoutDashboard size={18} /> Dashboard
-                    </Link>
-                    <Link href="/settings" onClick={() => setShowProfileDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
-                      <Settings size={18} /> Settings
-                    </Link>
-                    <div className="border-t border-gray-700 my-1"></div>
-                    <button onClick={handleLogout} className="flex items-center gap-3 w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors">
-                      <LogOut size={18} /> Logout
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link href="/" className="hidden md:flex px-4 py-2 rounded-lg text-white font-semibold bg-cyan-600 hover:bg-cyan-500 transition-colors items-center gap-2"> {/* Hidden on mobile */}
-                <LogIn size={20} />
-                Login
-              </Link>
-            )}
-
-            {/* Mobile Menu Button */}
-            <div className="md:hidden"> {/* Visible on mobile */}
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="p-2 rounded-md text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-                aria-label="Open mobile menu"
-              >
-                <Menu size={24} />
-              </button>
+            </nav>
+            <div className="flex items-center gap-4">
+              {isAuthenticated ? (
+                  <Link href="/home" className="hidden md:flex items-center gap-2 bg-cyan-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-cyan-500">Go to App <ArrowRight size={18}/></Link>
+              ) : (
+                <div className="hidden md:flex items-center space-x-4">
+                  <button onClick={onLoginClick} className="text-gray-300 hover:text-white font-medium transition-colors">Login</button>
+                  <button onClick={onRegisterClick} className="bg-cyan-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-cyan-500 transition-all duration-300">Register</button>
+                </div>
+              )}
+              <div className="md:hidden"><button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-gray-300"><Menu size={24} /></button></div>
             </div>
           </div>
         </div>
-      </nav>
+        {/* Mobile Menu for Homepage can be implemented here if needed */}
+      </header>
+    );
+  }
 
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'tween', duration: 0.3 }}
-            className="fixed inset-0 bg-gray-950 z-50 flex flex-col p-6 md:hidden" // Full screen overlay on mobile
-          >
-            {/* Mobile Menu Header */}
-            <div className="flex justify-between items-center mb-8">
-              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-2xl font-extrabold text-white">
-                <BrainCircuit size={30} className="text-cyan-400" /> Khojney App
-              </Link>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 rounded-md text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-                aria-label="Close mobile menu"
-              >
-                <X size={24} />
+  // --- RENDER APP NAVBAR (for all other pages) ---
+  return (
+    <nav className="sticky top-0 z-50 bg-gray-900 bg-opacity-90 backdrop-blur-md border-b border-gray-800 py-3 px-6 shadow-xl">
+      <div className="mx-auto max-w-7xl flex justify-between items-center">
+        <Link href="/home" className="flex items-center gap-2 text-2xl font-extrabold text-white hover:text-cyan-400 transition-colors">
+          <BrainCircuit size={30} className="text-cyan-400" />
+          Khojney App
+        </Link>
+        
+        <div className="hidden md:flex items-center space-x-2">
+          {appLinks.map((link) => (
+            <Link key={link.name} href={link.href} className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors ${pathname.startsWith(link.href) ? 'bg-gray-700 text-cyan-400' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <link.icon size={20} />{link.name}
+            </Link>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4">
+          {isAuthenticated ? (
+            <div className="relative hidden md:block" ref={profileDropdownRef}>
+              <button onClick={() => setProfileDropdownOpen(!isProfileDropdownOpen)} className="flex items-center gap-2 p-1 rounded-full text-gray-300 hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                <img src={userAvatarUrl} alt="User Avatar" className="w-9 h-9 rounded-full border-2 border-gray-600" />
+                <ChevronDown size={16} className={`transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
+              <AnimatePresence>
+                {isProfileDropdownOpen && (
+                  <motion.div initial={{opacity: 0, y: -10}} animate={{opacity: 1, y: 0}} exit={{opacity: 0, y: -10}} className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-2 z-50">
+                    <div className="px-4 py-2 border-b border-gray-700">
+                        <p className="text-sm font-medium text-white truncate">{session.user.user_metadata?.full_name || session.user.email}</p>
+                    </div>
+                    <Link href="/dashboard" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"><LayoutDashboard size={18} /> Dashboard</Link>
+                    <div className="border-t border-gray-700 my-1"></div>
+                    <button onClick={handleLogout} className="flex items-center gap-3 w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300"><LogOut size={18} /> Logout</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-
-            {/* Mobile Auth/Profile Section */}
-            {isAuthenticated ? (
-              <div className="flex flex-col items-center gap-4 mb-8 p-4 bg-gray-800 rounded-lg border border-gray-700">
-                <img src={userAvatarUrl} alt="User Avatar" className="w-20 h-20 rounded-full border-2 border-cyan-400" />
-                <span className="text-lg font-semibold text-white">
-                  {session?.user?.email || 'User'}
-                </span>
-                <div className="flex flex-col w-full space-y-2 mt-4">
-                  <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3 px-4 py-3 rounded-md text-white bg-gray-700 hover:bg-gray-600 transition-colors">
-                    <LayoutDashboard size={20} /> Dashboard
-                  </Link>
-                  <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3 px-4 py-3 rounded-md text-white bg-gray-700 hover:bg-gray-600 transition-colors">
-                    <Settings size={20} /> Settings
-                  </Link>
-                  <button onClick={handleLogout} className="flex items-center justify-center gap-3 px-4 py-3 rounded-md text-red-400 bg-red-900/20 hover:bg-red-900/30 transition-colors w-full">
-                    <LogOut size={20} /> Logout
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mb-8 w-full">
-                <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg text-white font-semibold bg-cyan-600 hover:bg-cyan-500 transition-colors">
-                  <LogIn size={20} />
-                  Login
-                </Link>
-              </div>
-            )}
-
-            {/* Mobile Navigation Links */}
-            {!shouldHideNavLinks && (
-                <div className="flex flex-col space-y-3">
-                    {navLinks.map((link) => (
-                    <Link
-                        key={link.name}
-                        href={link.href}
-                        onClick={() => setIsMobileMenuOpen(false)} // Close menu on link click
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xl font-medium transition-colors
-                            ${pathname === link.href ? 'bg-gray-800 text-cyan-400' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
-                        }
-                    >
-                        <link.icon size={24} />
-                        {link.name}
-                    </Link>
-                    ))}
-                </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          ) : (
+            <Link href="/" className="hidden md:flex px-4 py-2 rounded-lg text-white font-semibold bg-cyan-600 hover:bg-cyan-500"><LogIn size={20} /> Login</Link>
+          )}
+          <div className="md:hidden"><button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-gray-300"><Menu size={24} /></button></div>
+        </div>
+      </div>
+       {/* Mobile Menu for App */}
+    </nav>
   );
 };
