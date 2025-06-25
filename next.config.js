@@ -1,12 +1,11 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  // ✅ Disable ESLint during production builds (on Vercel)
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // ✅ Your ESLint configuration is preserved
   eslint: {
     ignoreDuringBuilds: true,
   },
 
-  // Your existing Webpack fallbacks
+  // ✅ Your essential Webpack configuration is preserved
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -28,4 +27,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// --- FIX: Using the correct JavaScript export syntax ---
+module.exports = nextConfig;
