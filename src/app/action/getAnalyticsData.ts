@@ -5,7 +5,7 @@
 // --- FIX #1: Import `CookieOptions` type ---
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { Database } from '@/types/supabase';
+import { Database } from '../../../types/supabase';
 
 export async function getAnalyticsData(userId: string | 'all') {
   // --- FIX #2: This line MUST be active ---
