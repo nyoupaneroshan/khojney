@@ -4,7 +4,8 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { Database } from '../../types/supabase'; // Using robust relative path
+// import { Database } from '../../types/supabase'; // Using robust relative path
+import { Database } from '../../../types/supabase'; // Using robust relative path
 
 export async function getAnalyticsData(userId: string | 'all') {
   const cookieStore = cookies();
