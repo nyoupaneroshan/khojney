@@ -1,42 +1,26 @@
 // src/app/action/getAnalyticsData.ts
 
-'use server'; // This is a Server Action
+'use server';
 
-// --- FIX #1: Import `CookieOptions` type ---
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { Database } from '../../../types/supabase';
+import { Database } from '../../types/supabase'; // Using robust relative path
 
 export async function getAnalyticsData(userId: string | 'all') {
-  // --- FIX #2: This line MUST be active ---
   const cookieStore = cookies();
-
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch (error) {
-            // The `set` method was called from a Server Component.
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options });
-          } catch (error) {
-            // The `delete` method was called from a Server Component.
-          }
-        },
+        get(name: string) { return cookieStore.get(name)?.value; },
+        set(name: string, value: string, options: CookieOptions) { try { cookieStore.set({ name, value, ...options }); } catch (error) {} },
+        remove(name: string, options: CookieOptions) { try { cookieStore.set({ name, value: '', ...options }); } catch (error) {} },
       },
     }
   );
 
+  // The query is correct, but the shape of the returned data needs careful handling.
   const query = supabase.from('quiz_attempts').select(`
       score,
       created_at,
@@ -60,7 +44,18 @@ export async function getAnalyticsData(userId: string | 'all') {
   const avgScore = totalQuizzes > 0 ? (totalScore / totalQuizzes) : 0;
   
   const categoryPerformance = attempts.reduce((acc, a) => {
-    const catName = a.categories?.name_en || 'General';
+    // --- THIS IS THE FIX ---
+    // We now check if `a.categories` is an array and take the first element.
+    const categoryArray = a.categories;
+    let catName = 'General';
+    if (Array.isArray(categoryArray) && categoryArray.length > 0) {
+        catName = categoryArray[0].name_en || 'General';
+    } else if (categoryArray && !Array.isArray(categoryArray)) {
+        // Fallback for cases where it might be a single object
+        catName = (categoryArray as { name_en: string }).name_en || 'General';
+    }
+    // --- END OF FIX ---
+
     if (!acc[catName]) {
       acc[catName] = { totalScore: 0, count: 0 };
     }
@@ -71,7 +66,7 @@ export async function getAnalyticsData(userId: string | 'all') {
   
   const categoryChartData = Object.entries(categoryPerformance).map(([name, data]) => ({
       name,
-      avgScore: parseFloat((data.totalScore / data.count).toFixed(1)),
+      avgScore: parseFloat((data.totalScore / data.count || 0).toFixed(1)),
       quizzes: data.count
   })).sort((a,b) => b.quizzes - a.quizzes);
 
@@ -83,7 +78,7 @@ export async function getAnalyticsData(userId: string | 'all') {
 
   const activityChartData = Object.entries(attemptsByDay).map(([date, count]) => ({
       date,
-      quizzes: count,
+      quizzes: count as number,
   })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Return the fully processed data object
