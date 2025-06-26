@@ -38,6 +38,11 @@ interface CategoryData {
     quizzes: number;
 }
 
+// --- FIX #1: Define a specific interface for the category accumulator ---
+interface CategoryPerformance {
+    [key: string]: { totalScore: number; count: number };
+}
+
 interface QuizPerformanceData {
     quiz_id: string;
     quiz_title: string;
@@ -60,137 +65,17 @@ interface AnalyticsData {
 
 interface UserProfile { id: string; full_name: string | null; email: string | null; }
 
-// --- UI SUB-COMPONENTS ---
-const StatCard = ({ icon, title, value, trend, unit = '' }: { icon: React.ReactNode, title: string, value: string | number, trend: number, unit?: string }) => {
-    const isPositive = trend >= 0;
-    const trendColor = isPositive ? 'text-green-400' : 'text-red-400';
-
-    return (
-        <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6">
-            <div className="flex items-start justify-between">
-                <p className="text-sm font-medium text-gray-400">{title}</p>
-                <div className="text-gray-500">{icon}</div>
-            </div>
-            <div className="flex items-baseline gap-2">
-                 <p className="text-4xl font-bold text-white mt-2">{value}{unit}</p>
-                 <div className={`flex items-center text-sm font-semibold ${trendColor}`}>
-                    {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                    <span>{Math.abs(trend).toFixed(1)}%</span>
-                 </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">vs. previous period</p>
-        </div>
-    );
-};
-
-const SkeletonLoader = () => (
-    <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 animate-pulse">
-        <div className="h-4 bg-gray-700 rounded w-1/3 mb-4"></div>
-        <div className="h-10 bg-gray-700 rounded w-1/2"></div>
-        <div className="h-3 bg-gray-700 rounded w-1/4 mt-2"></div>
-    </div>
-);
-
-const EmptyState = ({ message, icon }: { message: string, icon: React.ReactNode }) => (
-    <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-6">
-        {icon}
-        <p className="mt-2 text-sm">{message}</p>
-    </div>
-);
-
+// --- UI SUB-COMPONENTS (No changes needed) ---
+const StatCard = ({ icon, title, value, trend, unit = '' }: { icon: React.ReactNode, title: string, value: string | number, trend: number, unit?: string }) => { const isPositive = trend >= 0; const trendColor = isPositive ? 'text-green-400' : 'text-red-400'; return ( <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6"> <div className="flex items-start justify-between"> <p className="text-sm font-medium text-gray-400">{title}</p> <div className="text-gray-500">{icon}</div> </div> <div className="flex items-baseline gap-2"> <p className="text-4xl font-bold text-white mt-2">{value}{unit}</p> <div className={`flex items-center text-sm font-semibold ${trendColor}`}> {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />} <span>{Math.abs(trend).toFixed(1)}%</span> </div> </div> <p className="text-xs text-gray-500 mt-1">vs. previous period</p> </div> ); };
+const SkeletonLoader = () => ( <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 animate-pulse"> <div className="h-4 bg-gray-700 rounded w-1/3 mb-4"></div> <div className="h-10 bg-gray-700 rounded w-1/2"></div> <div className="h-3 bg-gray-700 rounded w-1/4 mt-2"></div> </div> );
+const EmptyState = ({ message, icon }: { message: string, icon: React.ReactNode }) => ( <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-6"> {icon} <p className="mt-2 text-sm">{message}</p> </div> );
 const AdminLoading = () => <main className="flex min-h-screen items-center justify-center bg-gray-900"><Loader2 className="h-12 w-12 text-cyan-400 animate-spin" /></main>;
-const AccessDenied = () => (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 text-center bg-gray-900">
-        <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
-        <h1 className="text-2xl font-bold text-red-400">Access Denied</h1>
-        <p className="mt-2 text-gray-400">You do not have permission to view this page.</p>
-        <Link href="/" className="text-cyan-400 hover:text-cyan-300 mt-6">Go to Homepage</Link>
-    </main>
-);
+const AccessDenied = () => ( <main className="flex min-h-screen flex-col items-center justify-center p-8 text-center bg-gray-900"> <AlertTriangle className="w-16 h-16 text-red-500 mb-4" /> <h1 className="text-2xl font-bold text-red-400">Access Denied</h1> <p className="mt-2 text-gray-400">You do not have permission to view this page.</p> <Link href="/" className="text-cyan-400 hover:text-cyan-300 mt-6">Go to Homepage</Link> </main> );
+const QuestionStatsWidget = ({ title, questions, icon, colorClass }: { title: string, questions: any[], icon: React.ReactNode, colorClass: string }) => ( <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 h-full min-h-[300px]"> <div className="flex items-center gap-3 mb-4"><div className={`text-lg ${colorClass}`}>{icon}</div><h3 className="font-bold text-white">{title}</h3></div> {questions.length === 0 ? ( <EmptyState message="Not enough data to calculate question difficulty." icon={<HelpCircle size={32}/>} /> ) : ( <ul className="space-y-3 text-sm"> {questions.map((q: any) => (<li key={q.question_id} className="flex justify-between items-center border-b border-gray-700/50 pb-2 last:border-b-0"><span className="text-gray-300 w-4/5 truncate" title={q.questions.question_text_en}>{q.questions.question_text_en}</span><span className={`font-bold ${colorClass}`}>{q.correct_percentage.toFixed(1)}%</span></li>))} </ul> )} </div> );
+const LeaderboardWidget = ({ users }: { users: any[] }) => ( <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 h-full min-h-[300px]"> <div className="flex items-center gap-3 mb-4"><Trophy size={20} className="text-yellow-400"/><h3 className="font-bold text-white">Top Users</h3></div> {users.length === 0 ? ( <EmptyState message="No users with scores in this period." icon={<Users size={32}/>} /> ) : ( <ol className="space-y-3 text-sm"> {users.map((user, index) => (<li key={user.id} className="flex items-center justify-between border-b border-gray-700/50 pb-2 last:border-b-0"><div className="flex items-center gap-3"><span className="font-bold text-gray-500 w-6 text-center">{index + 1}</span><span className="text-gray-200 truncate">{user.full_name || 'Unnamed User'}</span></div><span className="font-bold text-white">{user.total_score || 0} pts</span></li>))} </ol> )} </div> );
+const CategoryChartWidget = ({ data }: { data: CategoryData[] }) => { const COLORS = ['#06b6d4', '#22d3ee', '#67e8f9', '#a5f3fc', '#cffafe']; return ( <div className="col-span-12 lg:col-span-7 bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 h-96"> <h3 className="font-bold text-white mb-4">Category Performance</h3> {data.length === 0 ? ( <EmptyState message="No category data available for this selection." icon={<BookOpen size={32} />} /> ) : ( <ResponsiveContainer width="100%" height="90%"> <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 30, bottom: 5 }}> <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} /> <XAxis type="number" stroke="#9ca3af" fontSize={12} /> <YAxis type="category" dataKey="name" width={100} stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} /> <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #4b5563' }} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }} /> <Legend /> <Bar dataKey="avgScore" name="Avg Score"> {data.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))} </Bar> <Bar dataKey="quizzes" name="Total Quizzes" fill="#82ca9d" /> </BarChart> </ResponsiveContainer> )} </div> ); };
+const QuizPerformanceWidget = ({ data }: { data: QuizPerformanceData[] }) => ( <div className="col-span-12 bg-gray-800/50 border border-gray-700/80 rounded-xl p-6"> <div className="flex items-center gap-3 mb-4"><BrainCircuit size={20} className="text-purple-400" /><h3 className="font-bold text-white">Quiz Performance Details</h3></div> {data.length === 0 ? ( <EmptyState message="No individual quiz performance data for this selection." icon={<HelpCircle size={32}/>} /> ) : ( <div className="overflow-x-auto"> <table className="w-full text-sm text-left"> <thead className="text-xs text-gray-400 uppercase bg-gray-900/50"> <tr> <th scope="col" className="px-6 py-3">Quiz Title</th> <th scope="col" className="px-6 py-3 text-center">Total Attempts</th> <th scope="col" className="px-6 py-3 text-center">Unique Takers</th> <th scope="col" className="px-6 py-3 text-right">Avg Score</th> </tr> </thead> <tbody> {data.map(quiz => ( <tr key={quiz.quiz_id} className="border-b border-gray-700/80 hover:bg-gray-800/60"> <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap">{quiz.quiz_title}</th> <td className="px-6 py-4 text-center">{quiz.total_attempts}</td> <td className="px-6 py-4 text-center">{quiz.unique_takers}</td> <td className="px-6 py-4 text-right font-bold">{quiz.avg_score.toFixed(1)}</td> </tr> ))} </tbody> </table> </div> )} </div> );
 
-const QuestionStatsWidget = ({ title, questions, icon, colorClass }: { title: string, questions: any[], icon: React.ReactNode, colorClass: string }) => (
-    <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 h-full min-h-[300px]">
-        <div className="flex items-center gap-3 mb-4"><div className={`text-lg ${colorClass}`}>{icon}</div><h3 className="font-bold text-white">{title}</h3></div>
-        {questions.length === 0 ? (
-            <EmptyState message="Not enough data to calculate question difficulty." icon={<HelpCircle size={32}/>} />
-        ) : (
-            <ul className="space-y-3 text-sm">
-                {questions.map((q: any) => (<li key={q.question_id} className="flex justify-between items-center border-b border-gray-700/50 pb-2 last:border-b-0"><span className="text-gray-300 w-4/5 truncate" title={q.questions.question_text_en}>{q.questions.question_text_en}</span><span className={`font-bold ${colorClass}`}>{q.correct_percentage.toFixed(1)}%</span></li>))}
-            </ul>
-        )}
-    </div>
-);
-
-const LeaderboardWidget = ({ users }: { users: any[] }) => (
-     <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 h-full min-h-[300px]">
-        <div className="flex items-center gap-3 mb-4"><Trophy size={20} className="text-yellow-400"/><h3 className="font-bold text-white">Top Users</h3></div>
-         {users.length === 0 ? (
-            <EmptyState message="No users with scores in this period." icon={<Users size={32}/>} />
-        ) : (
-            <ol className="space-y-3 text-sm">
-               {users.map((user, index) => (<li key={user.id} className="flex items-center justify-between border-b border-gray-700/50 pb-2 last:border-b-0"><div className="flex items-center gap-3"><span className="font-bold text-gray-500 w-6 text-center">{index + 1}</span><span className="text-gray-200 truncate">{user.full_name || 'Unnamed User'}</span></div><span className="font-bold text-white">{user.total_score || 0} pts</span></li>))}
-            </ol>
-        )}
-    </div>
-);
-
-const CategoryChartWidget = ({ data }: { data: CategoryData[] }) => {
-    const COLORS = ['#06b6d4', '#22d3ee', '#67e8f9', '#a5f3fc', '#cffafe'];
-    return (
-        <div className="col-span-12 lg:col-span-7 bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 h-96">
-            <h3 className="font-bold text-white mb-4">Category Performance</h3>
-             {data.length === 0 ? (
-                <EmptyState message="No category data available for this selection." icon={<BookOpen size={32} />} />
-            ) : (
-                <ResponsiveContainer width="100%" height="90%">
-                    <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 30, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                        <XAxis type="number" stroke="#9ca3af" fontSize={12} />
-                        <YAxis type="category" dataKey="name" width={100} stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #4b5563' }} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }} />
-                        <Legend />
-                        <Bar dataKey="avgScore" name="Avg Score">
-                            {data.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
-                        </Bar>
-                         <Bar dataKey="quizzes" name="Total Quizzes" fill="#82ca9d" />
-                    </BarChart>
-                </ResponsiveContainer>
-             )}
-        </div>
-    );
-};
-
-const QuizPerformanceWidget = ({ data }: { data: QuizPerformanceData[] }) => (
-    <div className="col-span-12 bg-gray-800/50 border border-gray-700/80 rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-4"><BrainCircuit size={20} className="text-purple-400" /><h3 className="font-bold text-white">Quiz Performance Details</h3></div>
-        {data.length === 0 ? (
-            <EmptyState message="No individual quiz performance data for this selection." icon={<HelpCircle size={32}/>} />
-        ) : (
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-400 uppercase bg-gray-900/50">
-                        <tr>
-                            <th scope="col" className="px-6 py-3">Quiz Title</th>
-                            <th scope="col" className="px-6 py-3 text-center">Total Attempts</th>
-                            <th scope="col" className="px-6 py-3 text-center">Unique Takers</th>
-                            <th scope="col" className="px-6 py-3 text-right">Avg Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.map(quiz => (
-                            <tr key={quiz.quiz_id} className="border-b border-gray-700/80 hover:bg-gray-800/60">
-                                <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap">{quiz.quiz_title}</th>
-                                <td className="px-6 py-4 text-center">{quiz.total_attempts}</td>
-                                <td className="px-6 py-4 text-center">{quiz.unique_takers}</td>
-                                <td className="px-6 py-4 text-right font-bold">{quiz.avg_score.toFixed(1)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        )}
-    </div>
-);
 
 // --- MAIN ANALYTICS PAGE ---
 export default function AnalyticsPage() {
@@ -239,12 +124,9 @@ const fetchAnalyticsData = useCallback(async (userId: string, currentRange: Date
               attemptsQuery = attemptsQuery.eq('user_id', userId);
           }
           
-          // vvv --- THE FINAL FIX IS HERE --- vvv
-          // We now query the 'leaderboard' view we created, which already calculates the total_score.
           const leaderboardQuery = isMainPeriod 
               ? supabase.from('leaderboard').select('id, full_name, total_score').limit(10)
               : Promise.resolve({ data: [], error: null });
-          // ^^^ --- THE FINAL FIX IS HERE --- ^^^
 
           const [
               attemptsRes,
@@ -256,7 +138,7 @@ const fetchAnalyticsData = useCallback(async (userId: string, currentRange: Date
               attemptsQuery,
               supabase.from('profiles').select('id, created_at').gte('created_at', range.from.toISOString()).lte('created_at', range.to.toISOString()),
               isMainPeriod ? supabase.from('question_stats').select('question_id, correct_percentage, total_attempts, questions(question_text_en)').filter('total_attempts', 'gte', 1) : Promise.resolve({ data: [], error: null }),
-              leaderboardQuery, // Using the new leaderboard query
+              leaderboardQuery,
               isMainPeriod ? supabase.rpc('get_quiz_performance_stats', { from_date: range.from.toISOString(), to_date: range.to.toISOString() }) : Promise.resolve({ data: [], error: null })
           ]);
 
@@ -283,13 +165,21 @@ const fetchAnalyticsData = useCallback(async (userId: string, currentRange: Date
       const avgScore = totalQuizzes > 0 ? (totalScore / totalQuizzes) : 0;
       const totalUsers = mainPeriodData.signups.length;
       
-      const categoryPerformance = mainPeriodData.attempts.reduce((acc: any, a: any) => { const catName = a.categories?.name_en || 'General'; if (!acc[catName]) acc[catName] = { totalScore: 0, count: 0 }; acc[catName].totalScore += a.score || 0; acc[catName].count += 1; return acc; }, {} as Record<string, { totalScore: number, count: number }>);
+      // --- FIX #2: Use the new CategoryPerformance interface to strongly type the accumulator ---
+      const categoryPerformance = mainPeriodData.attempts.reduce((acc: CategoryPerformance, a: any) => { 
+          const catName = a.categories?.name_en || 'General'; 
+          if (!acc[catName]) acc[catName] = { totalScore: 0, count: 0 }; 
+          acc[catName].totalScore += a.score || 0; 
+          acc[catName].count += 1; 
+          return acc; 
+      }, {} as CategoryPerformance); // Asserting the initial value's type is also important
+
       const categoryChartData = Object.entries(categoryPerformance).map(([name, data]) => ({ name, avgScore: parseFloat((data.totalScore / data.count || 0).toFixed(1)), quizzes: data.count })).sort((a,b) => b.quizzes - a.quizzes);
 
-      const attemptsByDay = mainPeriodData.attempts.reduce((acc: any, a: any) => { const date = new Date(a.created_at).toISOString().split('T')[0]; acc[date] = (acc[date] || 0) + 1; return acc; }, {} as Record<string, number>);
+      const attemptsByDay = mainPeriodData.attempts.reduce((acc: Record<string, number>, a: any) => { const date = new Date(a.created_at).toISOString().split('T')[0]; acc[date] = (acc[date] || 0) + 1; return acc; }, {});
       const activityChartData = Object.entries(attemptsByDay).map(([date, quizzes]) => ({ date, quizzes })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       
-      const userSignupsByDay = mainPeriodData.signups.reduce((acc: any, u: any) => { const date = new Date(u.created_at).toISOString().split('T')[0]; acc[date] = (acc[date] || 0) + 1; return acc; }, {} as Record<string, number>);
+      const userSignupsByDay = mainPeriodData.signups.reduce((acc: Record<string, number>, u: any) => { const date = new Date(u.created_at).toISOString().split('T')[0]; acc[date] = (acc[date] || 0) + 1; return acc; }, {});
       const userSignupChartData = Object.entries(userSignupsByDay).map(([date, count]) => ({ date, "New Users": count })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       const prevTotalQuizzes = prevPeriodData.attempts.length;
@@ -354,10 +244,11 @@ const fetchAnalyticsData = useCallback(async (userId: string, currentRange: Date
       }
     };
     initializePage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFilterChange = () => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     if (selectedUser !== 'all') params.set('userId', selectedUser); else params.delete('userId');
     if (date?.from) params.set('from', format(date.from, 'yyyy-MM-dd')); else params.delete('from');
     if (date?.to) params.set('to', format(date.to, 'yyyy-MM-dd')); else params.delete('to');
@@ -373,7 +264,7 @@ const fetchAnalyticsData = useCallback(async (userId: string, currentRange: Date
       const csvContent = "data:text/csv;charset=utf-8," 
           + headers.join(",") + "\n" 
           + data.rawAttemptsData.map((row: any) => {
-              const quizTitle = row.quizzes?.name_en || 'N/A'; // Corrected from title to name_en
+              const quizTitle = row.quizzes?.name_en || 'N/A';
               return [
                 row.id,
                 row.user_id,
@@ -419,8 +310,7 @@ const fetchAnalyticsData = useCallback(async (userId: string, currentRange: Date
             </div>
         </div>
         
-        {(isFiltering && !data)}
-        {initialLoading ? (
+        {isFiltering ? (
              <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"><SkeletonLoader /><SkeletonLoader /><SkeletonLoader /><SkeletonLoader /></div>
                 <div className="grid grid-cols-12 gap-6"><div className="col-span-12 lg:col-span-7"><SkeletonLoader/></div><div className="col-span-12 lg:col-span-5"><SkeletonLoader/></div></div>
